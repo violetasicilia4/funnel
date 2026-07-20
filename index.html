@@ -13,10 +13,7 @@
       <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
       <span><strong>ADYR ALTA HUB</strong><small>Viaje de alta de clientes</small></span>
     </a>
-    <div class="header-actions">
-      <span class="status-pill"><span class="status-dot"></span> Datos hasta 202607</span>
-      <button class="icon-button" id="definitionsButton" type="button" aria-label="Abrir definiciones">?</button>
-    </div>
+    <span class="status-pill"><span class="status-dot"></span> Datos hasta 202607</span>
   </header>
 
   <main class="shell">
@@ -25,8 +22,6 @@
         <label class="select-control">Período
           <select id="periodSelect"></select>
         </label>
-        <a class="secondary-button" href="data/funnel-data.csv" download>CSV</a>
-        <a class="primary-button" href="data/funnel-data.json" download>Descargar data</a>
       </div>
     </section>
 
@@ -40,13 +35,6 @@
 
     <div id="app" class="app-content" aria-live="polite"></div>
   </main>
-
-  <dialog id="definitionsDialog" class="definitions-dialog">
-    <form method="dialog">
-      <div class="dialog-head"><div><span class="eyebrow">Metodología</span><h2>Definiciones del tablero</h2></div><button class="icon-button" aria-label="Cerrar">×</button></div>
-      <div id="definitionsContent" class="definition-list"></div>
-    </form>
-  </dialog>
 
   <script src="data.js"></script>
   <script src="app.js"></script>
