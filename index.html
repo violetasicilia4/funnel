@@ -18,20 +18,19 @@
 
   <main class="shell">
     <section class="toolbar">
+      <nav class="tabs" aria-label="Secciones del tablero">
+        <button class="tab active" data-tab="resumen"><span>Resumen ejecutivo</span><b>6</b></button>
+        <button class="tab" data-tab="funnel"><span>Funnel Experian</span><b>8</b></button>
+        <button class="tab" data-tab="altas"><span>Altas y oferta</span><b>3</b></button>
+        <button class="tab" data-tab="friccion"><span>Intentos y fricción</span><b>4</b></button>
+        <button class="tab" data-tab="datos"><span>Datos</span><b>20</b></button>
+      </nav>
       <div class="toolbar-controls">
         <label class="select-control">Período
           <select id="periodSelect"></select>
         </label>
       </div>
     </section>
-
-    <nav class="tabs" aria-label="Secciones del tablero">
-      <button class="tab active" data-tab="resumen"><span>Resumen ejecutivo</span><b>6</b></button>
-      <button class="tab" data-tab="funnel"><span>Funnel Experian</span><b>8</b></button>
-      <button class="tab" data-tab="altas"><span>Altas y oferta</span><b>3</b></button>
-      <button class="tab" data-tab="friccion"><span>Intentos y fricción</span><b>4</b></button>
-      <button class="tab" data-tab="datos"><span>Datos</span><b>20</b></button>
-    </nav>
 
     <div id="app" class="app-content" aria-live="polite"></div>
   </main>
