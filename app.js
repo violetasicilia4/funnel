@@ -2,13 +2,11 @@
   const { metadata, records } = window.FUNNEL_DATA;
   const app = document.getElementById('app');
   const periodSelect = document.getElementById('periodSelect');
-  const searchInput = document.getElementById('searchInput');
   const tabs = [...document.querySelectorAll('.tab')];
   const tooltip = document.createElement('div');
   tooltip.className = 'tooltip'; document.body.appendChild(tooltip);
   let currentTab = 'resumen';
   let currentPeriod = metadata.defaultPeriod;
-  let searchTerm = '';
 
   const colors = { orange:'#ff5a00', dark:'#1c1c1c', grey:'#a6a6a6', eminent:'#333333', plus:'#9a9a9a', move:'#ff5a00', other:'#d5d5d5', noData:'#ebe9e6' };
   const fmt = n => n == null ? '—' : new Intl.NumberFormat('es-AR', { maximumFractionDigits:0 }).format(n);
@@ -27,7 +25,7 @@
   const showTooltip = (evt, html) => { tooltip.innerHTML = html; tooltip.style.left = `${evt.clientX}px`; tooltip.style.top = `${evt.clientY}px`; tooltip.style.opacity = 1; };
   const hideTooltip = () => tooltip.style.opacity = 0;
 
-  function kpi(label, value, foot, cls='orange') { return `<article class="kpi-card ${cls}" data-search="${label} ${foot}"><div class="kpi-label">${label}</div><div class="kpi-value">${value}</div><div class="kpi-foot">${foot}</div></article>`; }
+  function kpi(label, value, foot, cls='orange') { return `<article class="kpi-card ${cls}"><div class="kpi-label">${label}</div><div class="kpi-value">${value}</div><div class="kpi-foot">${foot}</div></article>`; }
   function sectionHead(eyebrow, title, desc, note='') { return `<header class="section-head"><div><span class="eyebrow">${eyebrow}</span><h1>${title}</h1><p>${desc}</p></div>${note?`<span class="period-note">${note}</span>`:''}</header>`; }
 
   function svgLineChart(series, labels, height=260) {
@@ -76,11 +74,6 @@
         ${offerCard('Oferta de altas Experian','Experian','',{eminent:r.viaje_eminent,plus:r.viaje_plus,move:r.viaje_move,other:r.viaje_otros,noData:r.viaje_sin_dato})}
         ${offerCard('Oferta de altas manuales','Manual','manual',{eminent:r.es_g_plus?0:r.sin_viaje_eminent,plus:r.es_g_plus?0:r.sin_viaje_plus,move:r.es_g_plus?0:r.sin_viaje_move,other:r.es_g_plus?0:r.sin_viaje_otros,noData:r.es_g_plus?0:r.sin_viaje_sin_dato})}
         ${offerCard('Oferta de altas G+','G+','gplus',{eminent:r.es_g_plus?r.sin_viaje_eminent:0,plus:r.es_g_plus?r.sin_viaje_plus:0,move:r.es_g_plus?r.sin_viaje_move:0,other:r.es_g_plus?r.sin_viaje_otros:0,noData:r.es_g_plus?r.sin_viaje_sin_dato:0})}
-      </div>
-      <div class="insight-grid">
-        <article class="insight alert"><strong>Quiebre de cobertura</strong><p>La participación de Experian salta desde julio 2025. Los meses previos no deberían compararse sin aclarar el cambio de cobertura o proceso.</p></article>
-        <article class="insight dark"><strong>G+ · junio 2025</strong><p>${fmt(getRecord(202506).altas_g_plus)} altas extraordinarias se separan del flujo manual ordinario para que el evento HBC no distorsione la tendencia.</p></article>
-        <article class="insight"><strong>Oferta dominante</strong><p>En ${periodLabel(r.periodo)}, MOVE representa ${pct(r.altas_pgd_con_viaje_experian?r.viaje_move/r.altas_pgd_con_viaje_experian:0)} de las altas por Experian.</p></article>
       </div>`;
     attachChartEvents();
   }
@@ -127,14 +120,12 @@
     <section class="panel"><div class="panel-title-row"><div><h2>Qué falta para la métrica exacta</h2><div class="panel-subtitle">La pregunta correcta es cuántas evaluaciones N ocurrieron antes de la fecha de alta del mismo Party_ID.</div></div></div><div class="funnel-bars"><div class="insight"><strong>1. Fecha del alta</strong><p>Resumir solicitud_canal_arbol_unif a una fila por solicitud_id.</p></div><div class="insight"><strong>2. Intentos previos</strong><p>Contar Exp_Experian_ID N con fecha menor o igual al alta.</p></div><div class="insight"><strong>3. Distribución</strong><p>Mediana, P75, P90 y porcentaje con 1, 2, 3 o 4+ intentos.</p></div></div></section></div>
     <div class="callout"><strong>La web ya está preparada para recibir la métrica exacta.</strong><p>El proyecto incluye <a href="sql/intentos_exactos_antes_alta.sql" download>la query base de intentos antes del alta</a>. Hasta correrla, el tablero etiqueta el dato actual como proxy, en vez de maquillarlo con precisión imaginaria.</p></div>`;attachChartEvents();}
 
-  function renderDatos(){const filtered=records.filter(r=>!searchTerm||JSON.stringify(r).toLowerCase().includes(searchTerm));app.innerHTML=sectionHead('Base navegable','Datos mensuales completos','Descargá JSON o CSV, buscá valores y usá esta tabla como control del dashboard.',`${filtered.length} períodos`)+`<div class="table-wrap"><table class="data-table"><thead><tr><th>Período</th><th>Solicitudes</th><th>Personas</th><th>Leads N</th><th>Solicitudes N</th><th>PGD total</th><th>Experian</th><th>Manual</th><th>G+</th><th>M0</th><th>M1</th><th>Exp EMINENT</th><th>Exp PLUS</th><th>Exp MOVE</th><th>Manual/G+ EMINENT</th><th>Manual/G+ PLUS</th><th>Manual/G+ MOVE</th><th>% Experian</th></tr></thead><tbody>${filtered.map(r=>`<tr><td>${periodLabel(r.periodo)}${r.es_g_plus?'<span class="row-tag">G+</span>':''}${r.es_mes_parcial?'<span class="row-tag partial">Parcial</span>':''}</td><td>${fmt(r.solicitudes_experian_totales)}</td><td>${fmt(r.personas_solicitantes_totales)}</td><td>${fmt(r.leads_no_clientes_experian)}</td><td>${fmt(r.solicitudes_experian_n)}</td><td>${fmt(r.altas_pgd_totales)}</td><td>${fmt(r.altas_pgd_con_viaje_experian)}</td><td>${fmt(r.altas_manuales)}</td><td>${fmt(r.altas_g_plus)}</td><td>${fmt(r.altas_pgd_viaje_m0)}</td><td>${fmt(r.altas_pgd_viaje_m1)}</td><td>${fmt(r.viaje_eminent)}</td><td>${fmt(r.viaje_plus)}</td><td>${fmt(r.viaje_move)}</td><td>${fmt(r.sin_viaje_eminent)}</td><td>${fmt(r.sin_viaje_plus)}</td><td>${fmt(r.sin_viaje_move)}</td><td>${pct(r.tasa_altas_pgd_con_viaje)}</td></tr>`).join('')||'<tr><td colspan="18"><div class="empty-state">No encontré datos con esa búsqueda. Una tragedia moderada, solucionable borrando el filtro.</div></td></tr>'}</tbody></table></div>`;}
+  function renderDatos(){app.innerHTML=sectionHead('Base navegable','Datos mensuales completos','Descargá JSON o CSV y usá esta tabla como control del dashboard.',`${records.length} períodos`)+`<div class="table-wrap"><table class="data-table"><thead><tr><th>Período</th><th>Solicitudes</th><th>Personas</th><th>Leads N</th><th>Solicitudes N</th><th>PGD total</th><th>Experian</th><th>Manual</th><th>G+</th><th>M0</th><th>M1</th><th>Exp EMINENT</th><th>Exp PLUS</th><th>Exp MOVE</th><th>Manual/G+ EMINENT</th><th>Manual/G+ PLUS</th><th>Manual/G+ MOVE</th><th>% Experian</th></tr></thead><tbody>${records.map(r=>`<tr><td>${periodLabel(r.periodo)}${r.es_g_plus?'<span class="row-tag">G+</span>':''}${r.es_mes_parcial?'<span class="row-tag partial">Parcial</span>':''}</td><td>${fmt(r.solicitudes_experian_totales)}</td><td>${fmt(r.personas_solicitantes_totales)}</td><td>${fmt(r.leads_no_clientes_experian)}</td><td>${fmt(r.solicitudes_experian_n)}</td><td>${fmt(r.altas_pgd_totales)}</td><td>${fmt(r.altas_pgd_con_viaje_experian)}</td><td>${fmt(r.altas_manuales)}</td><td>${fmt(r.altas_g_plus)}</td><td>${fmt(r.altas_pgd_viaje_m0)}</td><td>${fmt(r.altas_pgd_viaje_m1)}</td><td>${fmt(r.viaje_eminent)}</td><td>${fmt(r.viaje_plus)}</td><td>${fmt(r.viaje_move)}</td><td>${fmt(r.sin_viaje_eminent)}</td><td>${fmt(r.sin_viaje_plus)}</td><td>${fmt(r.sin_viaje_move)}</td><td>${pct(r.tasa_altas_pgd_con_viaje)}</td></tr>`).join('')}</tbody></table></div>`;}
 
-  function render(){if(currentTab==='resumen')renderResumen();else if(currentTab==='funnel')renderFunnel();else if(currentTab==='altas')renderAltas();else if(currentTab==='friccion')renderFriccion();else renderDatos(); applySearchHighlight();}
-  function applySearchHighlight(){if(!searchTerm)return;document.querySelectorAll('[data-search]').forEach(el=>{el.style.display=el.dataset.search.toLowerCase().includes(searchTerm)?'':'none';});}
+  function render(){if(currentTab==='resumen')renderResumen();else if(currentTab==='funnel')renderFunnel();else if(currentTab==='altas')renderAltas();else if(currentTab==='friccion')renderFriccion();else renderDatos();}
 
   tabs.forEach(t=>t.addEventListener('click',()=>{tabs.forEach(x=>x.classList.remove('active'));t.classList.add('active');currentTab=t.dataset.tab;render();}));
   periodSelect.addEventListener('change',()=>{currentPeriod=Number(periodSelect.value);render();});
-  searchInput.addEventListener('input',()=>{searchTerm=searchInput.value.trim().toLowerCase(); if(searchTerm&&currentTab!=='datos'){tabs.forEach(x=>x.classList.toggle('active',x.dataset.tab==='datos'));currentTab='datos';} render();});
 
   const dialog=document.getElementById('definitionsDialog');document.getElementById('definitionsButton').addEventListener('click',()=>dialog.showModal());
   document.getElementById('definitionsContent').innerHTML=Object.entries(metadata.definitions).map(([k,v])=>`<div class="definition-item"><strong>${({altaExperian:'Alta a través de Experian',altaManual:'Alta manual',gPlus:'G+',intentosProxy:'Intentos actuales'})[k]||k}</strong><p>${v}</p></div>`).join('')+`<div class="definition-item"><strong>Período comparable</strong><p>La lectura principal comienza en julio 2025. Junio 2025 se separa como G+ y julio 2026 se marca como parcial.</p></div>`;
