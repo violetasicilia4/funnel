@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="description" content="Viaje de alta de clientes: Experian, altas manuales, G+ y oferta comercial." />
+  <title>ADYR | Viaje de Alta</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#" aria-label="Inicio">
+      <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+      <span><strong>ADYR ALTA HUB</strong><small>Viaje de alta de clientes</small></span>
+    </a>
+    <div class="header-actions">
+      <span class="status-pill"><span class="status-dot"></span> Datos hasta 202607</span>
+      <button class="icon-button" id="definitionsButton" type="button" aria-label="Abrir definiciones">?</button>
+    </div>
+  </header>
+
+  <main class="shell">
+    <section class="toolbar">
+      <label class="search-box">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.6-3.6"></path></svg>
+        <input id="searchInput" type="search" placeholder="Buscar una métrica, sección o definición..." />
+      </label>
+      <div class="toolbar-controls">
+        <label class="select-control">Período
+          <select id="periodSelect"></select>
+        </label>
+        <a class="secondary-button" href="data/funnel-data.csv" download>CSV</a>
+        <a class="primary-button" href="data/funnel-data.json" download>Descargar data</a>
+      </div>
+    </section>
+
+    <nav class="tabs" aria-label="Secciones del tablero">
+      <button class="tab active" data-tab="resumen"><span>Resumen ejecutivo</span><b>6</b></button>
+      <button class="tab" data-tab="funnel"><span>Funnel Experian</span><b>8</b></button>
+      <button class="tab" data-tab="altas"><span>Altas y oferta</span><b>3</b></button>
+      <button class="tab" data-tab="friccion"><span>Intentos y fricción</span><b>4</b></button>
+      <button class="tab" data-tab="datos"><span>Datos</span><b>20</b></button>
+    </nav>
+
+    <div id="app" class="app-content" aria-live="polite"></div>
+  </main>
+
+  <dialog id="definitionsDialog" class="definitions-dialog">
+    <form method="dialog">
+      <div class="dialog-head"><div><span class="eyebrow">Metodología</span><h2>Definiciones del tablero</h2></div><button class="icon-button" aria-label="Cerrar">×</button></div>
+      <div id="definitionsContent" class="definition-list"></div>
+    </form>
+  </dialog>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
