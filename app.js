@@ -63,17 +63,15 @@
         ${kpi('Leads no clientes',fmt(r.leads_no_clientes_experian),'Personas identificadas como no clientes.','orange')}
         ${kpi('Altas a través de Experian',fmt(r.altas_pgd_con_viaje_experian),`${pct(r.conversion_lead_a_alta_experian)} de los leads no clientes.`, 'orange')}
         ${kpi('Altas manuales',fmt(r.altas_manuales),'Sin match Experian.','grey')}
-        ${kpi('Altas G+',fmt(r.altas_g_plus),'Incorporación extraordinaria HBC.','gplus')}
         ${kpi('Intentos antes del alta',fmt1(r.intentos_n_por_lead),'Promedio de solicitudes por lead no cliente.','dark')}
       </div>
       <div class="grid-2">
         <section class="panel"><div class="panel-title-row"><div><h2>Funnel del viaje Experian</h2><div class="panel-subtitle">Personas, leads no clientes y altas a través de Experian.</div></div></div>${funnel(r)}</section>
         <section class="panel"><div class="panel-title-row"><div><h2>Altas por origen</h2><div class="panel-subtitle">Tendencia desde julio 2025.</div></div>${legend([{label:'A través de Experian',color:colors.orange},{label:'Manuales',color:colors.grey},{label:'G+',color:colors.dark}])}</div><div class="chart">${stackedBars(records.filter(x=>x.periodo>=202505),[{key:'altas_pgd_con_viaje_experian',label:'Altas a través de Experian',color:colors.orange},{key:'altas_manuales',label:'Altas manuales',color:colors.grey},{key:'altas_g_plus',label:'Altas G+',color:colors.dark}])}</div></section>
       </div>
-      <div class="grid-3">
+      <div class="offer-grid">
         ${offerCard('Oferta comercial de altas a través de Experian','Experian','',{eminent:r.viaje_eminent,plus:r.viaje_plus,move:r.viaje_move,other:r.viaje_otros,noData:r.viaje_sin_dato})}
         ${offerCard('Oferta comercial de altas manuales','Manual','manual',{eminent:r.es_g_plus?0:r.sin_viaje_eminent,plus:r.es_g_plus?0:r.sin_viaje_plus,move:r.es_g_plus?0:r.sin_viaje_move,other:r.es_g_plus?0:r.sin_viaje_otros,noData:r.es_g_plus?0:r.sin_viaje_sin_dato})}
-        ${offerCard('Oferta comercial de altas G+','G+','gplus',{eminent:r.es_g_plus?r.sin_viaje_eminent:0,plus:r.es_g_plus?r.sin_viaje_plus:0,move:r.es_g_plus?r.sin_viaje_move:0,other:r.es_g_plus?r.sin_viaje_otros:0,noData:r.es_g_plus?r.sin_viaje_sin_dato:0})}
       </div>`;
     attachChartEvents();
   }
@@ -99,7 +97,6 @@
       ${kpi('Altas totales',fmt(r.altas_pgd_totales),'Universo de altas nuevas.','dark')}
       ${kpi('Altas a través de Experian',fmt(r.altas_pgd_con_viaje_experian),pct(r.tasa_altas_pgd_con_viaje)+' del total.','orange')}
       ${kpi('Altas manuales',fmt(r.altas_manuales),r.es_g_plus?'El residual se asigna a G+.':pct(r.altas_pgd_totales?r.altas_manuales/r.altas_pgd_totales:0)+' del total.','grey')}
-      ${kpi('Altas G+',fmt(r.altas_g_plus),'Evento HBC, junio 2025.','gplus')}
       ${kpi('MOVE Experian',fmt(r.viaje_move),pct(r.altas_pgd_con_viaje_experian?r.viaje_move/r.altas_pgd_con_viaje_experian:0)+' del origen.','orange')}
       ${kpi('Altas manuales EMINENT',fmt(r.es_g_plus?0:r.sin_viaje_eminent),r.es_g_plus?'No aplica para G+.':pct(r.altas_manuales?r.sin_viaje_eminent/r.altas_manuales:0)+' del origen.','grey')}
     </div>
