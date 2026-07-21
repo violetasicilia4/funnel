@@ -13,7 +13,25 @@
   const fmt1 = n => n == null ? '—' : new Intl.NumberFormat('es-AR', { minimumFractionDigits:1, maximumFractionDigits:1 }).format(n);
   const pct = n => n == null || !Number.isFinite(n) ? '—' : new Intl.NumberFormat('es-AR',{style:'percent',minimumFractionDigits:1,maximumFractionDigits:1}).format(n);
   const periodLabel = p => `${String(p).slice(0,4)}-${String(p).slice(4,6)}`;
-  const getRecord = p => records.find(r => r.periodo === Number(p));
+  const normalizeRecord = record => {
+    const valueOrNull = value => Number.isFinite(value) ? value : null;
+    const altasPgd = valueOrNull(record.altas_pgd_experian) ?? valueOrNull(record.altas_pgd_viaje_m0);
+    const leads = valueOrNull(record.leads_no_clientes_experian);
+    return {
+      ...record,
+      solicitudes_aprobadas: valueOrNull(record.solicitudes_aprobadas),
+      solicitudes_rechazadas: valueOrNull(record.solicitudes_rechazadas),
+      tasa_aprobacion: valueOrNull(record.tasa_aprobacion),
+      tasa_rechazo: valueOrNull(record.tasa_rechazo),
+      altas_pgd_experian: altasPgd,
+      mau_30_dias: valueOrNull(record.mau_30_dias),
+      mau_60_dias: valueOrNull(record.mau_60_dias),
+      tasa_mau_30: valueOrNull(record.tasa_mau_30),
+      tasa_mau_60: valueOrNull(record.tasa_mau_60),
+      conversion_a_cliente: altasPgd != null && leads ? altasPgd / leads : null
+    };
+  };
+  const getRecord = p => normalizeRecord(records.find(r => r.periodo === Number(p)));
   const validRecords = records.filter(r => r.periodo >= 202501);
   const comparableRecords = records.filter(r => r.periodo >= metadata.comparableFrom && !r.es_mes_parcial);
 
@@ -55,15 +73,51 @@
     return `<article class="offer-card"><div class="offer-head"><strong>${title}</strong><span class="origin-badge ${badgeClass}">${badge}</span></div><div class="mix-bar">${items.map(([n,v,c])=>`<div class="mix-segment" title="${n}" style="width:${total?v/total*100:0}%;background:${c}"></div>`).join('')}</div><div class="offer-list">${items.filter(([,v])=>v>0).map(([n,v,c])=>`<div class="offer-row"><i class="offer-dot" style="background:${c}"></i><span>${n}</span><b>${fmt(v)} · ${pct(total?v/total:0)}</b></div>`).join('')||'<span class="panel-subtitle">Sin oferta disponible para el período.</span>'}</div></article>`;
   }
 
+  function dominantOffer(r){
+    const offers=[['MOVE',r.viaje_move],['PLUS',r.viaje_plus],['EMINENT',r.viaje_eminent]].filter(([,value])=>Number.isFinite(value));
+    if(!offers.length || offers.every(([,value])=>value===0)) return null;
+    return offers.reduce((current,offer)=>offer[1]>current[1]?offer:current);
+  }
+
+  function pendingIntegration(text='Fuente pendiente de integrar'){return `<div class="pending-integration">${text}</div>`;}
+
+  function journeyStage(label, value, detail, status='real', extra=''){
+    const isPending=status==='pending';
+    return `<article class="journey-stage ${status}"><div class="journey-stage-label">${label}</div><strong>${isPending?'Pendiente':fmt(value)}</strong><small>${isPending?'Fuente pendiente de integrar':detail}</small>${extra}</article>`;
+  }
+
+  function commercialOfferStage(r){
+    const offers=[['MOVE',r.viaje_move,colors.move],['PLUS',r.viaje_plus,colors.plus],['EMINENT',r.viaje_eminent,colors.eminent]];
+    const total=offers.reduce((sum,[,value])=>sum+(value||0),0);
+    return `<article class="journey-stage real offer-stage"><div class="journey-stage-label">Oferta comercial</div><strong>Altas PGD</strong><small>Distribución dentro de las altas PGD.</small><div class="journey-offers">${offers.map(([label,value,color])=>`<div><i style="background:${color}"></i><span>${label}</span><b>${fmt(value)} · ${pct(total?value/total:null)}</b></div>`).join('')}</div></article>`;
+  }
+
+  function mauStage(r){
+    const available=r.mau_30_dias != null||r.mau_60_dias != null;
+    if(!available)return journeyStage('Activación MAU',null,'','pending','<div class="mau-pending"><span>Activación a 30 días</span><span>Activación a 60 días</span><em>Se incorporará activación a 30 y 60 días.</em></div>');
+    return `<article class="journey-stage real"><div class="journey-stage-label">Activación MAU</div><strong>Disponible</strong><small>Activación posterior al alta.</small><div class="mau-pending"><span>Activación a 30 días · ${fmt(r.mau_30_dias)}</span><span>Activación a 60 días · ${fmt(r.mau_60_dias)}</span></div></article>`;
+  }
+
+  function integrationChart(title, pendingText, series){
+    const data=validRecords.map(normalizeRecord);
+    const available=data.some(record=>series.some(item=>record[item.key] != null));
+    if(!available)return `<section class="panel pending-chart"><h2>${title}</h2>${pendingIntegration(pendingText)}</section>`;
+    return `<section class="panel"><div class="panel-title-row"><div><h2>${title}</h2><div class="panel-subtitle">Evolución mensual en escala de personas.</div></div>${legend(series.map(item=>({label:item.label,color:item.color})))}</div><div class="chart">${stackedBars(data,series)}</div></section>`;
+  }
+
+  function funnel(r){const vals=[['Evaluaciones Experian',r.solicitudes_experian_totales,colors.dark],['Leads no clientes',r.leads_no_clientes_experian,colors.grey],['Altas PGD',r.altas_pgd_experian,colors.orange]];const max=Math.max(...vals.map(([,value])=>value||0),1);return `<div class="funnel-bars">${vals.map((value,index)=>`<div class="funnel-row"><div><div class="funnel-label">${value[0]}</div>${index?`<div class="funnel-rate">${pct(value[1]/vals[index-1][1])} del paso anterior</div>`:''}</div><div class="funnel-track"><div class="funnel-fill" style="width:${Math.max(value[1]/max*100,1)}%;background:${value[2]}"></div></div><div class="funnel-value">${fmt(value[1])}</div></div>`).join('')}</div>`}
+
   function renderResumen(){
     const r=getRecord(currentPeriod); const isG=r.es_g_plus; const note=isG?'Período extraordinario G+':r.es_mes_parcial?'Mes parcial · oferta pendiente':`Período ${periodLabel(r.periodo)}`;
+    const dominant=dominantOffer(r);
     app.innerHTML=sectionHead('Resumen ejecutivo','Cómo entra y se convierte el cliente','Una vista curada del recorrido normal por Experian, las altas manuales y la incorporación extraordinaria G+.',note)+`
       <div class="kpi-grid">
-        ${kpi('Personas evaluadas',fmt(r.personas_solicitantes_totales),'Personas evaluadas en Experian.','dark')}
+        ${kpi('Evaluaciones Experian',fmt(r.solicitudes_experian_totales),'Total de evaluaciones realizadas.','dark')}
         ${kpi('Leads no clientes',fmt(r.leads_no_clientes_experian),'Personas identificadas como no clientes.','orange')}
-        ${kpi('Altas a través de Experian',fmt(r.altas_pgd_con_viaje_experian),`${pct(r.conversion_lead_a_alta_experian)} de los leads no clientes.`, 'orange')}
-        ${kpi('Altas manuales',fmt(r.altas_manuales),'Sin match Experian.','grey')}
-        ${kpi('Intentos antes del alta',fmt1(r.intentos_n_por_lead),'Promedio de solicitudes por lead no cliente.','dark')}
+        ${kpi('Altas PGD',fmt(r.altas_pgd_experian),'Altas del mismo período.','orange')}
+        ${kpi('Conversión a cliente',pct(r.conversion_a_cliente),'Altas PGD sobre leads no clientes.','dark')}
+        ${kpi('Oferta dominante',dominant?dominant[0]:'Pendiente',dominant?`${fmt(dominant[1])} altas PGD.`:'Sin oferta disponible para el período.','orange')}
+        ${kpi('Activación MAU','Pendiente','Fuente pendiente de integrar.','grey')}
       </div>
       <div class="grid-2">
         <section class="panel"><div class="panel-title-row"><div><h2>Funnel del viaje Experian</h2><div class="panel-subtitle">Personas, leads no clientes y altas a través de Experian.</div></div></div>${funnel(r)}</section>
@@ -76,21 +130,21 @@
     attachChartEvents();
   }
 
-  function funnel(r){const vals=[['Personas evaluadas',r.personas_solicitantes_totales,colors.dark],['Leads no clientes',r.leads_no_clientes_experian,colors.grey],['Altas a través de Experian',r.altas_pgd_con_viaje_experian,colors.orange]]; const max=Math.max(...vals.map(v=>v[1]),1);return `<div class="funnel-bars">${vals.map((v,i)=>`<div class="funnel-row"><div><div class="funnel-label">${v[0]}</div>${i?`<div class="funnel-rate">${pct(v[1]/vals[i-1][1])} del paso anterior</div>`:''}</div><div class="funnel-track"><div class="funnel-fill" style="width:${Math.max(v[1]/max*100,1)}%;background:${v[2]}"></div></div><div class="funnel-value">${fmt(v[1])}</div></div>`).join('')}</div>`}
-
-  function renderFunnel(){const r=getRecord(currentPeriod); app.innerHTML=sectionHead('Funnel Experian','Del lead no cliente a la conversión','Seguimiento del recorrido desde el interés hasta la conversión a cliente.',`Conversión a cliente ${pct(r.conversion_lead_a_alta_experian)}`)+`
-    <div class="metric-strip">
-      <div class="metric-mini"><span>Evaluaciones en Experian</span><strong>${fmt(r.solicitudes_experian_totales)}</strong><small>Total de evaluaciones realizadas.</small></div>
-      <div class="metric-mini"><span>Leads no clientes</span><strong>${fmt(r.leads_no_clientes_experian)}</strong><small>Personas no clientes por período.</small></div>
-      <div class="metric-mini"><span>Altas a través de Experian</span><strong>${fmt(r.altas_pgd_viaje_m0)}</strong><small>${pct(r.participacion_m0)} de las conversiones.</small></div>
-      <div class="metric-mini"><span>Altas adicionales a través de Experian</span><strong>${fmt(r.altas_pgd_viaje_m1)}</strong><small>${pct(r.participacion_m1)} de las conversiones.</small></div>
-    </div>
+  function renderFunnel(){const r=getRecord(currentPeriod); const approvedAvailable=r.solicitudes_aprobadas != null; const rejectedAvailable=r.solicitudes_rechazadas != null; app.innerHTML=sectionHead('Funnel Experian','Del interés a la activación','Seguimiento del recorrido desde la evaluación inicial hasta el uso posterior al alta.',`Conversión a cliente ${pct(r.conversion_a_cliente)}`)+`
+    <section class="journey-panel"><div class="journey-flow">
+      ${journeyStage('Evaluaciones Experian',r.solicitudes_experian_totales,'Total de evaluaciones realizadas.')}
+      ${journeyStage('Leads no clientes',r.leads_no_clientes_experian,'Personas no clientes por período.')}
+      ${journeyStage('Solicitudes aprobadas',r.solicitudes_aprobadas,r.tasa_aprobacion != null?`${pct(r.tasa_aprobacion)} de las solicitudes.`:'Dato integrado.',approvedAvailable?'real':'pending')}
+      ${journeyStage('Solicitudes rechazadas',r.solicitudes_rechazadas,r.tasa_rechazo != null?`${pct(r.tasa_rechazo)} de las solicitudes.`:'Dato integrado.',rejectedAvailable?'real':'pending')}
+      ${journeyStage('Altas PGD',r.altas_pgd_experian,`${pct(r.conversion_a_cliente)} de los leads no clientes.`)}
+      ${commercialOfferStage(r)}
+      ${mauStage(r)}
+    </div></section>
     <div class="grid-2">
-      <section class="panel"><div class="panel-title-row"><div><h2>Leads no clientes y altas</h2><div class="panel-subtitle">Evolución mensual en escala de personas.</div></div>${legend([{label:'Leads no clientes',color:colors.dark},{label:'Altas a través de Experian',color:colors.orange}])}</div><div class="chart">${svgLineChart([{name:'Leads no clientes',values:validRecords.map(x=>x.leads_no_clientes_experian),color:colors.dark,width:2},{name:'Altas a través de Experian',values:validRecords.map(x=>x.altas_pgd_con_viaje_experian),color:colors.orange,width:3}],validRecords.map(x=>x.periodo))}</div></section>
-      <section class="panel"><div class="panel-title-row"><div><h2>Conversión a cliente</h2><div class="panel-subtitle">Distribución de las altas a través de Experian.</div></div>${legend([{label:'Altas principales',color:colors.orange},{label:'Altas adicionales',color:colors.grey}])}</div><div class="chart">${stackedBars(validRecords,[{key:'altas_pgd_viaje_m0',label:'Altas principales',color:colors.orange},{key:'altas_pgd_viaje_m1',label:'Altas adicionales',color:colors.grey}])}</div></section>
-    </div>${funnelTable()}`;attachChartEvents();}
-
-  function funnelTable(){return `<section class="panel"><div class="panel-title-row"><div><h2>Detalle mensual</h2><div class="panel-subtitle">El indicador muestra solicitudes por lead no cliente antes del alta.</div></div></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Período</th><th>Personas</th><th>Leads no clientes</th><th>Solicitudes por lead no cliente</th><th>Intentos antes del alta</th><th>Altas principales</th><th>Altas adicionales</th><th>Altas a través de Experian</th><th>Conversión a cliente</th></tr></thead><tbody>${validRecords.map(r=>`<tr><td>${periodLabel(r.periodo)}${r.es_g_plus?'<span class="row-tag">G+</span>':''}${r.es_mes_parcial?'<span class="row-tag partial">Parcial</span>':''}</td><td>${fmt(r.personas_solicitantes_totales)}</td><td>${fmt(r.leads_no_clientes_experian)}</td><td>${fmt(r.solicitudes_experian_n)}</td><td>${fmt1(r.intentos_n_por_lead)}</td><td>${fmt(r.altas_pgd_viaje_m0)}</td><td>${fmt(r.altas_pgd_viaje_m1)}</td><td>${fmt(r.altas_pgd_con_viaje_experian)}</td><td>${pct(r.conversion_lead_a_alta_experian)}</td></tr>`).join('')}</tbody></table></div></section>`}
+      <section class="panel"><div class="panel-title-row"><div><h2>Leads no clientes y Altas PGD</h2><div class="panel-subtitle">Evolución mensual en escala de personas.</div></div>${legend([{label:'Leads no clientes',color:colors.dark},{label:'Altas PGD',color:colors.orange}])}</div><div class="chart">${svgLineChart([{name:'Leads no clientes',values:validRecords.map(x=>x.leads_no_clientes_experian),color:colors.dark,width:2},{name:'Altas PGD',values:validRecords.map(x=>normalizeRecord(x).altas_pgd_experian),color:colors.orange,width:3}],validRecords.map(x=>x.periodo))}</div></section>
+      ${integrationChart('Solicitudes aprobadas y rechazadas','Datos pendientes de integración',[{key:'solicitudes_aprobadas',label:'Solicitudes aprobadas',color:colors.orange},{key:'solicitudes_rechazadas',label:'Solicitudes rechazadas',color:colors.grey}])}
+    </div>
+    ${integrationChart('Activación MAU','Datos pendientes de integración para activación a 30 y 60 días.',[{key:'mau_30_dias',label:'Activación a 30 días',color:colors.orange},{key:'mau_60_dias',label:'Activación a 60 días',color:colors.grey}])}`;attachChartEvents();}
 
   function renderAltas(){const r=getRecord(currentPeriod); app.innerHTML=sectionHead('Altas y oferta comercial','De dónde provienen las altas','Separa las altas a través de Experian, las altas manuales y el evento extraordinario G+.',`Altas totales ${fmt(r.altas_pgd_totales)}`)+`
     <div class="kpi-grid">
